@@ -66,6 +66,19 @@
       outline: none; border-color: var(--brand-color);
       box-shadow: 0 0 0 3px var(--brand-color-light);
     }
+
+    /* --- NIEUW: Styling voor de datum slider --- */
+    .slider-container {
+      padding: 1rem 0.5rem;
+    }
+    .slider-dates {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--medium-color);
+    }
+    /* --- EINDE NIEUW --- */
     
     /* === Onderwerpsbalk (Details/Summary) === */
     details { border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1.5rem; background-color: #fff; box-shadow: var(--card-shadow); transition: all 0.2s ease-in-out; overflow: hidden; }
@@ -228,9 +241,6 @@
     
     function createBarElement(barState) { const barEl = document.createElement('details'); barEl.id = barState.id; barEl.setAttribute('open', ''); barEl.innerHTML = ` <summary> <div class="topic-selector-container"> <select class="topic-selector">${THEMES.map(t => `<option value="${t.id}" ${barState.topic === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select> <input type="text" class="custom-keyword-input" value="${barState.customKeyword}" style="display:${barState.topic === 'custom' ? 'block' : 'none'}" placeholder="Typ trefwoord en Enter..."> </div> <div class="top-parties"></div> </summary> <div class="bar-content"> <div class="loader-container" style="display: none;"><div class="loader"></div></div> <div class="error-message" style="display: none;"></div> <div class="motions-container"></div> <div class="bar-controls"> <button class="load-more-btn" disabled>Laad 5 extra</button> <span class="bar-status">Kies een onderwerp om te starten</span> </div> <div class="bar-footer"> <button class="close-bar-btn">Onderwerp Sluiten</button> </div> </div>`; return barEl; }
     
-    // --- DEFINITIEVE, WATERDICHTE FILTER ---
-    // Deze functie controleert lokaal ALLE titelvelden van een motie.
-    // Als het woord "begroting" erin voorkomt, wordt de motie afgekeurd.
     function isUnwantedMotion(motion) {
         const keyword = 'begroting';
         const titlesToCheck = [
@@ -242,10 +252,10 @@
 
         for (const title of titlesToCheck) {
             if (title && title.toLowerCase().includes(keyword)) {
-                return true; // Gevonden! Dit is een ongewenste motie.
+                return true;
             }
         }
-        return false; // Veilig, geen "begroting" gevonden.
+        return false;
     }
 
     async function fetchMotions(barState, count) { 
@@ -268,7 +278,6 @@
         } 
         
         const dateFilter = ` and GestartOp gt ${dateRange.start.toISOString()} and GestartOp lt ${dateRange.end.toISOString()}`; 
-        // De onbetrouwbare filter is uit de API-link verwijderd.
         const strictMotionFilter = `Soort eq 'Motie' and Verwijderd eq false and (startswith(tolower(Onderwerp), 'motie van het lid') or startswith(tolower(Onderwerp), 'motie van de leden') or startswith(tolower(Onderwerp), 'gewijzigde motie'))`;
 
         const countUrl = `${ODATA_BASE}/Zaak?$filter=${strictMotionFilter}${dateFilter}${topicFilter}&$count=true&$top=0`; 
@@ -285,7 +294,6 @@
             } 
             
             let fetchedCount = 0; 
-            // We proberen tot 50 keer een motie te vinden, om te voorkomen dat we vastlopen.
             for (let i = 0; i < 50 && fetchedCount < count; i++) { 
                 updateBarStatus(barState, `Motie ${fetchedCount + 1}/${count} zoeken...`); 
                 const randomOffset = Math.floor(Math.random() * barState.totalMotions); 
@@ -298,10 +306,9 @@
                 
                 const motion = motionData.value[0]; 
                 
-                // --- HIER VINDT DE DEFINITIEVE CONTROLE PLAATS ---
                 if (isUnwantedMotion(motion)) {
                     console.log("Begrotingsmotie overgeslagen:", motion.Document?.[0]?.Titel || motion.Onderwerp);
-                    continue; // Gooi weg en probeer opnieuw.
+                    continue;
                 }
                 
                 if (barState.motions.some(m => m.Id === motion.Id)) continue; 
