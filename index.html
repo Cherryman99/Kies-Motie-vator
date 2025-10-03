@@ -228,6 +228,26 @@
     
     function createBarElement(barState) { const barEl = document.createElement('details'); barEl.id = barState.id; barEl.setAttribute('open', ''); barEl.innerHTML = ` <summary> <div class="topic-selector-container"> <select class="topic-selector">${THEMES.map(t => `<option value="${t.id}" ${barState.topic === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select> <input type="text" class="custom-keyword-input" value="${barState.customKeyword}" style="display:${barState.topic === 'custom' ? 'block' : 'none'}" placeholder="Typ trefwoord en Enter..."> </div> <div class="top-parties"></div> </summary> <div class="bar-content"> <div class="loader-container" style="display: none;"><div class="loader"></div></div> <div class="error-message" style="display: none;"></div> <div class="motions-container"></div> <div class="bar-controls"> <button class="load-more-btn" disabled>Laad 5 extra</button> <span class="bar-status">Kies een onderwerp om te starten</span> </div> <div class="bar-footer"> <button class="close-bar-btn">Onderwerp Sluiten</button> </div> </div>`; return barEl; }
     
+    // --- DEFINITIEVE, WATERDICHTE FILTER ---
+    // Deze functie controleert lokaal ALLE titelvelden van een motie.
+    // Als het woord "begroting" erin voorkomt, wordt de motie afgekeurd.
+    function isUnwantedMotion(motion) {
+        const keyword = 'begroting';
+        const titlesToCheck = [
+            motion.Titel,
+            motion.Onderwerp,
+            motion.Citeertitel,
+            motion.Document?.[0]?.Titel
+        ];
+
+        for (const title of titlesToCheck) {
+            if (title && title.toLowerCase().includes(keyword)) {
+                return true; // Gevonden! Dit is een ongewenste motie.
+            }
+        }
+        return false; // Veilig, geen "begroting" gevonden.
+    }
+
     async function fetchMotions(barState, count) { 
         const barEl = document.getElementById(barState.id); 
         const loader = barEl.querySelector('.loader-container'); 
@@ -237,6 +257,7 @@
         errorEl.style.display = 'none'; 
         motionsContainer.style.display = 'none'; 
         updateBarStatus(barState, 'Echte moties tellen...'); 
+        
         let topicFilter; 
         if (barState.topic === 'custom' && barState.customKeyword) { 
             topicFilter = ` and contains(tolower(Onderwerp), '${barState.customKeyword.toLowerCase().replace(/'/g, "''")}')`; 
@@ -245,12 +266,10 @@
             const keywords = theme ? theme.keywords : []; 
             topicFilter = keywords && keywords.length > 0 ? ` and (${keywords.map(kw => `contains(tolower(Onderwerp), '${kw}')`).join(' or ')})` : ''; 
         } 
-        const dateFilter = ` and GestartOp gt ${dateRange.start.toISOString()} and GestartOp lt ${dateRange.end.toISOString()}`; 
         
-        // --- PERMANENT FIX APPLIED HERE ---
-        // Filtering on the root word "begroting" to catch all variations.
-        const strictMotionFilter = `Soort eq 'Motie' and Verwijderd eq false and (startswith(tolower(Onderwerp), 'motie van het lid') or startswith(tolower(Onderwerp), 'motie van de leden') or startswith(tolower(Onderwerp), 'gewijzigde motie')) and not contains(tolower(Onderwerp), 'begroting')`;
-        // --- END FIX ---
+        const dateFilter = ` and GestartOp gt ${dateRange.start.toISOString()} and GestartOp lt ${dateRange.end.toISOString()}`; 
+        // De onbetrouwbare filter is uit de API-link verwijderd.
+        const strictMotionFilter = `Soort eq 'Motie' and Verwijderd eq false and (startswith(tolower(Onderwerp), 'motie van het lid') or startswith(tolower(Onderwerp), 'motie van de leden') or startswith(tolower(Onderwerp), 'gewijzigde motie'))`;
 
         const countUrl = `${ODATA_BASE}/Zaak?$filter=${strictMotionFilter}${dateFilter}${topicFilter}&$count=true&$top=0`; 
         try { 
@@ -258,25 +277,39 @@
             if (!countRes.ok) throw new Error(`API count request failed with status ${countRes.status}`); 
             const countData = await countRes.json(); 
             barState.totalMotions = countData['@odata.count']; 
+            
             if (barState.totalMotions === 0) { 
                 updateBarStatus(barState, 'Geen moties gevonden. Probeer een ander trefwoord of verruim de periode.'); 
                 loader.style.display = 'none'; 
                 return 0; 
             } 
+            
             let fetchedCount = 0; 
-            for (let i = 0; i < count * 5 && fetchedCount < count; i++) { 
+            // We proberen tot 50 keer een motie te vinden, om te voorkomen dat we vastlopen.
+            for (let i = 0; i < 50 && fetchedCount < count; i++) { 
                 updateBarStatus(barState, `Motie ${fetchedCount + 1}/${count} zoeken...`); 
                 const randomOffset = Math.floor(Math.random() * barState.totalMotions); 
                 const motionUrl = `${ODATA_BASE}/Zaak?$filter=${strictMotionFilter}${dateFilter}${topicFilter}&$expand=ZaakActor,Document($expand=Kamerstukdossier)&$orderby=GestartOp desc&$top=1&$skip=${randomOffset}`; 
                 const motionRes = await fetch(motionUrl); 
                 if (!motionRes.ok) continue; 
+                
                 const motionData = await motionRes.json(); 
                 if (motionData.value.length === 0) continue; 
+                
                 const motion = motionData.value[0]; 
+                
+                // --- HIER VINDT DE DEFINITIEVE CONTROLE PLAATS ---
+                if (isUnwantedMotion(motion)) {
+                    console.log("Begrotingsmotie overgeslagen:", motion.Document?.[0]?.Titel || motion.Onderwerp);
+                    continue; // Gooi weg en probeer opnieuw.
+                }
+                
                 if (barState.motions.some(m => m.Id === motion.Id)) continue; 
+                
                 barState.motions.push(motion); 
                 fetchedCount++; 
             } 
+            
             updateBarStatus(barState, `${fetchedCount} nieuwe moties toegevoegd. Totaal: ${barState.motions.length}`); 
             return fetchedCount; 
         } catch(e) { 
