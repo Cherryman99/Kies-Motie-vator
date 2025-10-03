@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Kies-Motie-Vator — Interactieve Kieswijzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" />
+  <style>
+    :root {
+      --brand-color: #4f46e5;
+      --brand-color-light: #e0e7ff;
+      --brand-color-dark: #3730a3;
+      --dark-color: #1f2937;
+      --medium-color: #6b7280;
+      --light-color: #f3f4f6;
+      --background-color: #f9fafb;
+      --border-color: #e5e7eb;
+      --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+      --card-shadow-hover: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.1);
+    }
+
+    /* === Basisstijlen === */
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      margin: 0; padding: 0;
+      background: var(--background-color);
+      color: var(--dark-color);
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      background: var(--dark-color);
+      color: white;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    header h1 { margin: 0; font-weight: 700; }
+    header p { max-width: 600px; margin: 0.5rem auto 0; opacity: 0.8; }
+    .container { max-width: 1100px; margin: 1.5rem auto; padding: 1rem; }
+    .grid { display: grid; grid-template-columns: 1fr 340px; gap: 2rem; align-items: flex-start; }
+    .card { background: white; border-radius: 12px; box-shadow: var(--card-shadow); padding: 1.5rem; transition: box-shadow 0.2s ease-in-out; }
+    aside.card { position: sticky; top: 20px; }
+    
+    /* === Knoppen & Input === */
+    button {
+      background: var(--dark-color);
+      color: white; border: none; padding: 0.6rem 1.2rem;
+      border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 500;
+      transition: all 0.2s ease-in-out;
+    }
+    button:hover:not(:disabled) { background-color: #374151; transform: translateY(-1px); }
+    button:disabled { background: #9ca3af; cursor: not-allowed; }
+    #addBarBtn { background-color: var(--brand-color); }
+    #addBarBtn:hover:not(:disabled) { background-color: var(--brand-color-dark); }
+    #resetBtn { background-color: #ef4444; }
+    #resetBtn:hover:not(:disabled) { background-color: #dc2626; }
+    select, input[type="text"] {
+      padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color);
+      font-size: 0.9rem; background-color: #fff;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    select:focus, input[type="text"]:focus {
+      outline: none; border-color: var(--brand-color);
+      box-shadow: 0 0 0 3px var(--brand-color-light);
+    }
+    
+    /* === Onderwerpsbalk (Details/Summary) === */
+    details { border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 1.5rem; background-color: #fff; box-shadow: var(--card-shadow); transition: all 0.2s ease-in-out; overflow: hidden; }
+    details[open] { border-color: var(--brand-color); }
+    summary { padding: 1rem 1.5rem; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; font-weight: 600; transition: background-color 0.2s; }
+    summary:hover { background-color: #f9fafb; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: '›'; font-size: 2rem; line-height: 1; color: #9ca3af;
+      transform: rotate(90deg); transition: transform 0.2s ease-in-out;
+    }
+    details[open] > summary::after { transform: rotate(-90deg); }
+    .bar-content { padding: 0 1.5rem 1.5rem 1.5rem; }
+    .topic-selector-container { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .top-parties { font-size: 0.8rem; color: var(--medium-color); font-weight: normal; text-align: right; }
+
+    /* === Moties & Stemknoppen === */
+    .motie { padding: 1.5rem 1rem; border-bottom: 1px solid var(--border-color); transition: all 0.3s ease; }
+    .motie:last-child { border-bottom: none; }
+    .motie-titel a { font-weight: 600; color: var(--dark-color); text-decoration: none; cursor: pointer; }
+    .motie-titel a:hover { color: var(--brand-color); }
+    .motie-datum { font-size: 0.8rem; color: var(--medium-color); margin-bottom: 1rem; }
+    
+    .motie-summary {
+      display: none;
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: var(--light-color);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 0.9em;
+      line-height: 1.6;
+    }
+    .motie-summary p { margin: 0 0 1em 0; }
+    .motie-summary p:last-child { margin-bottom: 0; }
+
+    .motie-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+    .motie-opts input[type="radio"] { display: none; }
+    .motie-opts label {
+      display: block; text-align: center; padding: 0.6rem;
+      border: 1px solid var(--border-color); border-radius: 8px;
+      cursor: pointer; transition: all 0.2s ease-in-out;
+    }
+    .motie-opts label:has(input[type="radio"]:checked) {
+      background-color: var(--brand-color-light); border-color: var(--brand-color);
+      color: var(--brand-color-dark); font-weight: 600;
+    }
+    .motie-opts label:hover { border-color: var(--brand-color-dark); }
+    .motie-actions { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+    .motie-actions .weights button { font-size: 0.75rem; padding: 3px 8px; border-radius: 6px; background-color: var(--light-color); color: var(--medium-color); border: 1px solid transparent; }
+    .motie-actions .weights button.active-weight { background-color: var(--brand-color); color: white; font-weight: 600; }
+    .motie-actions .dismiss-btn { background: none; border: none; cursor: pointer; color: #9ca3af; padding: 0; }
+    .motie-actions .dismiss-btn:hover { color: #ef4444; }
+    .motie-actions .dismiss-btn svg { width: 18px; height: 18px; }
+
+    /* === Scores & Sidebar === */
+    .score-header { display: flex; justify-content: space-between; align-items: center; }
+    .score-header h3 { margin: 0; font-weight: 600; }
+    .info-button { background: none; border: none; color: #9ca3af; cursor: pointer; padding: 0 0.5rem; }
+    .info-button:hover { color: var(--brand-color); }
+    .info-button svg { width: 20px; height: 20px; }
+    .party-list .party-row { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 0.25rem; border-bottom: 1px solid var(--light-color); }
+    .party-name { font-weight: 500; }
+    .party-score { font-size: 0.9rem; font-weight: 600; color: var(--brand-color-dark); background-color: var(--brand-color-light); padding: 4px 10px; border-radius: 9999px; }
+
+    /* === Status- & Controlebalken === */
+    .bar-controls { margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .bar-status { font-size: 0.8rem; color: var(--medium-color); }
+    .bar-footer { margin-top: 1.5rem; text-align: right; border-top: 1px solid var(--border-color); padding-top: 1rem; }
+    .close-bar-btn { background-color: var(--medium-color); font-size: 0.8rem; padding: 0.4rem 0.8rem; }
+    .close-bar-btn:hover { background-color: var(--dark-color); }
+
+    /* === Visuele Staten (Laden, Beantwoord, etc.) === */
+    .motie.answered { background-color: #f8f9fa; }
+    .motie.dismissed { opacity: 0.5; background-color: #fff5f5; }
+    .motie.dismissed .motie-opts, .motie.dismissed .motie-actions { display: none; }
+    .motie.processing { opacity: 0.5; pointer-events: none; }
+    .loader-container { display: flex; justify-content: center; padding: 2rem; }
+    .loader { border: 5px solid var(--light-color); border-top: 5px solid var(--brand-color); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* === Modal (Popup) === */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); }
+    .modal-content { background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 12px; }
+    .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; }
+    .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+
+    /* === Mobiele Sticky Score Balk === */
+    .mobile-scores-header {
+        display: none; position: sticky; top: -1px; z-index: 900;
+        background-color: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);
+        box-shadow: var(--card-shadow);
+        text-align: center; font-size: 0.85rem; font-weight: 500;
+        color: var(--medium-color); white-space: nowrap; overflow-x: auto;
+    }
+    .mobile-scores-header strong { color: var(--dark-color); }
+
+    /* === Media Query voor Mobiel === */
+    @media (max-width: 800px) {
+      .grid { grid-template-columns: 1fr; }
+      aside.card { display: none; }
+      .mobile-scores-header { display: block; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Kies-Motie-Vator</h1>
+    <p>Stel je eigen kieswijzer samen met onderwerpen die jij belangrijk vindt.</p>
+  </header>
+
+  <div id="mobileScoresHeader" class="mobile-scores-header"></div>
+
+  <main class="container">
+    <div class="card" style="margin-bottom: 1.5rem;">
+      <div class="slider-container">
+        <div id="date-slider"></div>
+        <div class="slider-dates">
+          <span id="slider-start-date"></span>
+          <span id="slider-end-date"></span>
+        </div>
+      </div>
+    </div>
+    <div class="grid">
+      <div>
+        <div id="barsContainer"></div>
+        <div class="main-controls">
+          <button id="addBarBtn">+ Onderwerp Toevoegen</button>
+          <button id="resetBtn">Reset Alles</button>
+        </div>
+      </div>
+      <aside class="card">
+        <div class="score-header">
+          <h3>Live Totaalscore</h3>
+          <button id="infoBtn" class="info-button" title="Hoe wordt de score berekend?"></button>
+        </div>
+        <div class="party-list" id="totalScoresContainer">(Beantwoord moties om je totaalscore te zien)</div>
+      </aside>
+    </div>
+  </main>
+  
+  <div id="infoModal" class="modal"> <div class="modal-content"> <span class="close-button">&times;</span> <h2>Hoe wordt de score berekend?</h2> <p>Je score wordt bepaald door jouw stemgedrag te vergelijken met het daadwerkelijke stemgedrag van de politieke partijen in de Tweede Kamer.</p> <ul> <li><strong>Vergelijking:</strong> Alleen je 'Voor' en 'Tegen' stemmen tellen mee.</li> <li><strong>Weging (Belang):</strong> Je kunt aangeven hoe belangrijk je een motie vindt (1x, 2x, 3x). Een match op een motie met belang '3x' telt drie keer zo zwaar mee als een match op '1x'.</li> <li><strong>Berekening:</strong> De score is het percentage van de gewogen overeenkomsten. De formule is:<br><code>(Totaal gewicht van matches) / (Totaal gewicht van alle beantwoorde moties)</code></li> <li><strong>Negeer:</strong> Moties die je verbergt (met het prullenbak-icoon) worden volledig uit de berekening gehaald.</li> </ul> <p>Dit zorgt voor een persoonlijke score die reflecteert wat jij belangrijk vindt.</p> </div> </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.js"></script>
+
+  <script>
+    const ICON_INFO = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>`;
+    const ICON_DISMISS = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>`;
+
+    const ODATA_BASE = 'https://gegevensmagazijn.tweedekamer.nl/OData/v4/2.0';
+    const MOTIES_PER_LOAD = 5;
+    const MAX_BARS = 5;
+    const THEMES = [{id:'all', label:'Kies een onderwerp', keywords:[]},{id:'economy', label:'Economie & Belastingen', keywords:['belasting','econom','bbp','bank','accijns','bedrijven']},{id:'zorg', label:'Zorg & Gezondheid', keywords:['zorg','gezond','ziekenhuis','ggz','vaccin','zorgverzekering']},{id:'klimaat', label:'Klimaat & Energie', keywords:['klimaat','co2','energie','duurzaam','emissie']},{id:'immigratie', label:'Asiel & Migratie', keywords:['asiel','migratie','opvang','vluchteling','immigratie','grens']},{id:'veiligheid', label:'Veiligheid & Justitie', keywords:['veiligheid','justitie','recht','politie','misdaad','straf']},{id:'onderwijs', label:'Onderwijs', keywords:['onderwijs','student','school','leraar','studie']},{id:'sociaal', label:'Sociaal beleid & Wonen', keywords:['huur','woning','sociaal','bijstand','pensioen','armoede']},{id:'custom', label:'Eigen trefwoord...'}];
+    
+    let barsState = [];
+    let dateRange = { start: null, end: null };
+    const elements = {barsContainer: document.getElementById('barsContainer'),totalScoresContainer: document.getElementById('totalScoresContainer'),resetBtn: document.getElementById('resetBtn'),addBarBtn: document.getElementById('addBarBtn'),dateSlider: document.getElementById('date-slider'),sliderStartDate: document.getElementById('slider-start-date'),sliderEndDate: document.getElementById('slider-end-date'),infoBtn: document.getElementById('infoBtn'),infoModal: document.getElementById('infoModal'),closeModalBtn: document.querySelector('.close-button'),mobileScoresHeader: document.getElementById('mobileScoresHeader'),};
+    
+    function createBarElement(barState) { const barEl = document.createElement('details'); barEl.id = barState.id; barEl.setAttribute('open', ''); barEl.innerHTML = ` <summary> <div class="topic-selector-container"> <select class="topic-selector">${THEMES.map(t => `<option value="${t.id}" ${barState.topic === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}</select> <input type="text" class="custom-keyword-input" value="${barState.customKeyword}" style="display:${barState.topic === 'custom' ? 'block' : 'none'}" placeholder="Typ trefwoord en Enter..."> </div> <div class="top-parties"></div> </summary> <div class="bar-content"> <div class="loader-container" style="display: none;"><div class="loader"></div></div> <div class="error-message" style="display: none;"></div> <div class="motions-container"></div> <div class="bar-controls"> <button class="load-more-btn" disabled>Laad 5 extra</button> <span class="bar-status">Kies een onderwerp om te starten</span> </div> <div class="bar-footer"> <button class="close-bar-btn">Onderwerp Sluiten</button> </div> </div>`; return barEl; }
+    
+    async function fetchMotions(barState, count) { 
+        const barEl = document.getElementById(barState.id); 
+        const loader = barEl.querySelector('.loader-container'); 
+        const errorEl = barEl.querySelector('.error-message'); 
+        const motionsContainer = barEl.querySelector('.motions-container'); 
+        loader.style.display = 'flex'; 
+        errorEl.style.display = 'none'; 
+        motionsContainer.style.display = 'none'; 
+        updateBarStatus(barState, 'Echte moties tellen...'); 
+        let topicFilter; 
+        if (barState.topic === 'custom' && barState.customKeyword) { 
+            topicFilter = ` and contains(tolower(Onderwerp), '${barState.customKeyword.toLowerCase().replace(/'/g, "''")}')`; 
+        } else { 
+            const theme = THEMES.find(t => t.id === barState.topic); 
+            const keywords = theme ? theme.keywords : []; 
+            topicFilter = keywords && keywords.length > 0 ? ` and (${keywords.map(kw => `contains(tolower(Onderwerp), '${kw}')`).join(' or ')})` : ''; 
+        } 
+        const dateFilter = ` and GestartOp gt ${dateRange.start.toISOString()} and GestartOp lt ${dateRange.end.toISOString()}`; 
+        
+        // --- PERMANENT FIX APPLIED HERE ---
+        // Filtering on the root word "begroting" to catch all variations.
+        const strictMotionFilter = `Soort eq 'Motie' and Verwijderd eq false and (startswith(tolower(Onderwerp), 'motie van het lid') or startswith(tolower(Onderwerp), 'motie van de leden') or startswith(tolower(Onderwerp), 'gewijzigde motie')) and not contains(tolower(Onderwerp), 'begroting')`;
+        // --- END FIX ---
+
+        const countUrl = `${ODATA_BASE}/Zaak?$filter=${strictMotionFilter}${dateFilter}${topicFilter}&$count=true&$top=0`; 
+        try { 
+            const countRes = await fetch(countUrl); 
+            if (!countRes.ok) throw new Error(`API count request failed with status ${countRes.status}`); 
+            const countData = await countRes.json(); 
+            barState.totalMotions = countData['@odata.count']; 
+            if (barState.totalMotions === 0) { 
+                updateBarStatus(barState, 'Geen moties gevonden. Probeer een ander trefwoord of verruim de periode.'); 
+                loader.style.display = 'none'; 
+                return 0; 
+            } 
+            let fetchedCount = 0; 
+            for (let i = 0; i < count * 5 && fetchedCount < count; i++) { 
+                updateBarStatus(barState, `Motie ${fetchedCount + 1}/${count} zoeken...`); 
+                const randomOffset = Math.floor(Math.random() * barState.totalMotions); 
+                const motionUrl = `${ODATA_BASE}/Zaak?$filter=${strictMotionFilter}${dateFilter}${topicFilter}&$expand=ZaakActor,Document($expand=Kamerstukdossier)&$orderby=GestartOp desc&$top=1&$skip=${randomOffset}`; 
+                const motionRes = await fetch(motionUrl); 
+                if (!motionRes.ok) continue; 
+                const motionData = await motionRes.json(); 
+                if (motionData.value.length === 0) continue; 
+                const motion = motionData.value[0]; 
+                if (barState.motions.some(m => m.Id === motion.Id)) continue; 
+                barState.motions.push(motion); 
+                fetchedCount++; 
+            } 
+            updateBarStatus(barState, `${fetchedCount} nieuwe moties toegevoegd. Totaal: ${barState.motions.length}`); 
+            return fetchedCount; 
+        } catch(e) { 
+            console.error(e); 
+            errorEl.textContent = 'Fout bij het ophalen van moties. Controleer je internetverbinding of probeer het later opnieuw.'; 
+            errorEl.style.display = 'block'; 
+            updateBarStatus(barState, 'Laden mislukt'); 
+            return 0; 
+        } finally { 
+            loader.style.display = 'none'; 
+            motionsContainer.style.display = 'block'; 
+        } 
+    }
+
+    async function fetchVotesForScoring(motion) { if (motion.partyVotes) return motion; const decisionUrl = `${ODATA_BASE}/Zaak(${motion.Id})/Besluit?$expand=Stemming($expand=Fractie)`; try { const res = await fetch(decisionUrl); if (res.ok) { const decisionData = await res.json(); if (decisionData.value.length > 0 && decisionData.value[0].Stemming) { motion.partyVotes = {}; decisionData.value[0].Stemming.forEach(s => { if (s.Fractie && s.Fractie.Afkorting) motion.partyVotes[s.Fractie.Afkorting] = (s.Soort || '').toLowerCase(); }); } } } catch (e) { console.warn(`Fout bij ophalen stemmen voor ${motion.Id}`); } return motion; }
+    function calculateScores(answers) { const partyScores = {}; const allMotions = barsState.flatMap(b => b.motions); const relevantAnswerEntries = Object.entries(answers).filter(([id, answer]) => (answer.vote === 'voor' || answer.vote === 'tegen') && answer.weight > 0); if (relevantAnswerEntries.length === 0) return []; relevantAnswerEntries.forEach(([motionId, userAnswer]) => { const motion = allMotions.find(m => m.Id === motionId); if (!motion || !motion.partyVotes) return; const userVote = userAnswer.vote; const userWeight = userAnswer.weight; for (const party in motion.partyVotes) { if (!partyScores[party]) { partyScores[party] = { matchWeight: 0, totalWeight: 0 }; } const partyVote = motion.partyVotes[party]; if (partyVote === 'voor' || partyVote === 'tegen') { partyScores[party].totalWeight += userWeight; if (userVote === partyVote) { partyScores[party].matchWeight += userWeight; } } } }); return Object.entries(partyScores).map(([party, score]) => ({party,percentage: score.totalWeight > 0 ? Math.round((score.matchWeight / score.totalWeight) * 100) : 0})).sort((a, b) => b.percentage - a.percentage || a.party.localeCompare(b.party)); }
+    
+    function updateBarContent(barState) {
+        const barEl = document.getElementById(barState.id);
+        const container = barEl.querySelector('.motions-container');
+        container.innerHTML = barState.motions.map(motion => {
+            const userAnswer = barState.answers[motion.Id] || { vote: null, weight: 1 };
+            const isDismissed = userAnswer.weight === 0;
+            const isAnswered = userAnswer.vote === 'voor' || userAnswer.vote === 'tegen';
+            const documentTitel = motion.Document && motion.Document.length > 0 ? motion.Document[0].Titel : null;
+            let titel = documentTitel || motion.Citeertitel || motion.Onderwerp || motion.Titel || 'Titel niet beschikbaar';
+            const motionDate = new Date(motion.GestartOp).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+            let finalUrl = `https://www.tweedekamer.nl/kamerstukken/moties?qry=${encodeURIComponent(titel)}`;
+            if (motion.Document && motion.Document[0]?.Kamerstukdossier[0]?.Nummer && motion.Document[0]?.Volgnummer) {
+                const doc = motion.Document[0];
+                finalUrl = `https://zoek.officielebekendmakingen.nl/kst-${doc.Kamerstukdossier[0].Nummer}-${doc.Volgnummer}.html`;
+            }
+            return `
+            <div class="motie ${isDismissed ? 'dismissed' : ''} ${isAnswered ? 'answered' : ''}" data-motion-id="${motion.Id}">
+                <div class="motie-titel"><a data-action="toggle-summary" data-url="${finalUrl}" title="Klik om de samenvatting te tonen">${titel}</a></div>
+                <div class="motie-datum">${motionDate}</div>
+                <div class="motie-summary"></div>
+                <div class="motie-opts">
+                    <label><input type="radio" name="${motion.Id}" value="voor" ${userAnswer.vote === 'voor' ? 'checked' : ''}><span>Voor</span></label>
+                    <label><input type="radio" name="${motion.Id}" value="tegen" ${userAnswer.vote === 'tegen' ? 'checked' : ''}><span>Tegen</span></label>
+                </div>
+                <div class="motie-actions">
+                    <div class="weights">Belang:
+                        <button data-weight="1" class="${userAnswer.weight === 1 ? 'active-weight' : ''}">1x</button>
+                        <button data-weight="2" class="${userAnswer.weight === 2 ? 'active-weight' : ''}">2x</button>
+                        <button data-weight="3" class="${userAnswer.weight === 3 ? 'active-weight' : ''}">3x</button>
+                    </div>
+                    <button class="dismiss-btn" data-action="dismiss" title="Wis stem en negeer in score">${ICON_DISMISS}</button>
+                </div>
+            </div>`;
+        }).join('');
+        barEl.querySelector('.load-more-btn').disabled = barState.topic === 'all';
+    }
+
+    function updateBarStatus(barState, text) { if (document.getElementById(barState.id)) { document.getElementById(barState.id).querySelector('.bar-status').textContent = text; } }
+    function updateTopParties(barState) { if (document.getElementById(barState.id)) { const top = calculateScores(barState.answers).slice(0, 3).map((p, i) => `${i + 1}. ${p.party} ${p.percentage}%`).join(' '); document.getElementById(barState.id).querySelector('.top-parties').textContent = top; } }
+    function updateTotalScores() { const allAnswers = barsState.reduce((acc, bar) => ({ ...acc, ...bar.answers }), {}); const scores = calculateScores(allAnswers); elements.totalScoresContainer.innerHTML = scores.map(s => `<div class="party-row"><span class="party-name">${s.party}</span><span class="party-score">${s.percentage}%</span></div>`).join('') || '(Beantwoord moties om je totaalscore te zien)'; updateMobileScoresHeader(scores); }
+    function updateMobileScoresHeader(scores) { if (scores.length === 0) { elements.mobileScoresHeader.innerHTML = 'Beantwoord moties voor je score'; return; } const topScores = scores.slice(0, 3).map(s => `<strong>${s.party}</strong> ${s.percentage}%`).join(' &nbsp; | &nbsp; '); elements.mobileScoresHeader.innerHTML = topScores; }
+    async function handleTopicChange(barState, newTopic) { barState.topic = newTopic; barState.motions = []; barState.answers = {}; const barEl = document.getElementById(barState.id); barEl.querySelector('.motions-container').innerHTML = ''; barEl.querySelector('.load-more-btn').disabled = true; if (barState.topic === 'custom') { updateBarStatus(barState, 'Typ een trefwoord en druk op Enter.'); } else if (barState.topic !== 'all') { await fetchMotions(barState, MOTIES_PER_LOAD); updateBarContent(barState); } else { updateBarStatus(barState, 'Kies een specifiek onderwerp.'); } updateTotalScores(); updateTopParties(barState); }
+    
+    async function handleBarAction(event) {
+        const barEl = event.target.closest('details');
+        if (!barEl) return;
+        const barState = barsState.find(b => b.id === barEl.id);
+        const motionEl = event.target.closest('.motie');
+        const motionId = motionEl ? motionEl.dataset.motionId : null;
+        if (motionId && !barState.answers[motionId]) { barState.answers[motionId] = { vote: null, weight: 1 }; }
+        let needsScoreUpdate = false;
+
+        if (event.target.matches('.topic-selector')) {
+            const newTopic = event.target.value;
+            barEl.querySelector('.custom-keyword-input').style.display = newTopic === 'custom' ? 'block' : 'none';
+            handleTopicChange(barState, newTopic);
+        } else if (event.target.matches('.custom-keyword-input') && event.key === 'Enter') {
+            barState.customKeyword = event.target.value;
+            barState.motions = [];
+            barState.answers = {};
+            barEl.querySelector('.motions-container').innerHTML = '';
+            await fetchMotions(barState, MOTIES_PER_LOAD);
+            updateBarContent(barState);
+            needsScoreUpdate = true;
+        } else if (event.target.matches('.load-more-btn')) {
+            const oldMotionCount = barState.motions.length;
+            event.target.disabled = true;
+            await fetchMotions(barState, MOTIES_PER_LOAD);
+            updateBarContent(barState);
+            const motionElements = barEl.querySelectorAll('.motie');
+            if (motionElements.length > oldMotionCount) {
+                motionElements[oldMotionCount].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        } else if (event.target.matches('input[type="radio"]')) {
+            motionEl.classList.add('processing');
+            try {
+                const motion = barState.motions.find(m => m.Id === motionId);
+                if (motion) await fetchVotesForScoring(motion);
+                barState.answers[motionId].vote = event.target.value;
+                motionEl.classList.add('answered');
+                if (barState.answers[motionId].weight === 0) {
+                    barState.answers[motionId].weight = 1;
+                    motionEl.classList.remove('dismissed');
+                    motionEl.querySelector('.active-weight')?.classList.remove('active-weight');
+                    motionEl.querySelector('[data-weight="1"]').classList.add('active-weight');
+                }
+                needsScoreUpdate = true;
+            } finally {
+                motionEl.classList.remove('processing');
+            }
+        } else if (event.target.matches('[data-weight]')) {
+            barState.answers[motionId].weight = parseInt(event.target.dataset.weight, 10);
+            motionEl.classList.remove('dismissed');
+            motionEl.querySelector('.active-weight')?.classList.remove('active-weight');
+            event.target.classList.add('active-weight');
+            needsScoreUpdate = true;
+        } else if (event.target.matches('[data-action="dismiss"]')) {
+            barState.answers[motionId].weight = 0;
+            barState.answers[motionId].vote = null;
+            motionEl.classList.add('dismissed');
+            motionEl.classList.remove('answered');
+            motionEl.querySelectorAll('input[type="radio"]').forEach(rb => rb.checked = false);
+            needsScoreUpdate = true;
+        } else if (event.target.matches('[data-action="toggle-summary"]')) {
+            const summaryContainer = motionEl.querySelector('.motie-summary');
+            const url = event.target.dataset.url;
+            if (summaryContainer.style.display === 'block') {
+                summaryContainer.style.display = 'none';
+                return;
+            }
+            summaryContainer.style.display = 'block';
+            if (summaryContainer.innerHTML !== '') return;
+            summaryContainer.innerHTML = '<i>Laden...</i>';
+            const proxyUrl = 'https://api.allorigins.win/raw?url=';
+            try {
+                const response = await fetch(proxyUrl + encodeURIComponent(url));
+                if (!response.ok) throw new Error('Network response was not ok');
+                const htmlText = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                const content = doc.querySelector('.artikel p, .stuk p, div.para, div.paragroup');
+                if (content) {
+                    summaryContainer.innerHTML = content.parentElement.innerHTML;
+                } else {
+                    summaryContainer.innerHTML = 'Kon de tekst niet vinden. <a href="' + url + '" target="_blank">Open handmatig</a>';
+                }
+            } catch (error) {
+                summaryContainer.innerHTML = 'Fout bij laden. <a href="' + url + '" target="_blank">Open handmatig</a>';
+            }
+        } else if (event.target.matches('.close-bar-btn')) {
+            barEl.open = false;
+            barEl.querySelector('summary').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        if (needsScoreUpdate) {
+            updateTopParties(barState);
+            updateTotalScores();
+        }
+    }
+
+    function initializeDateSlider() { const now = new Date(); const fourYearsAgo = new Date(new Date().setFullYear(now.getFullYear() - 4)); const oneYearAgo = new Date(new Date().setFullYear(now.getFullYear() - 1)); dateRange.start = oneYearAgo; dateRange.end = now; if (elements.dateSlider.noUiSlider) elements.dateSlider.noUiSlider.destroy(); noUiSlider.create(elements.dateSlider, { range: { 'min': fourYearsAgo.getTime(), 'max': now.getTime() }, start: [oneYearAgo.getTime(), now.getTime()], connect: true, step: 24 * 60 * 60 * 1000, format: { to: (value) => new Date(parseInt(value)).toLocaleDateString('nl-NL', { year: 'numeric', month: 'short', day: 'numeric' }), from: (value) => Number(value) } }); elements.dateSlider.noUiSlider.on('update', (values) => { elements.sliderStartDate.textContent = values[0]; elements.sliderEndDate.textContent = values[1]; }); elements.dateSlider.noUiSlider.on('set', (values) => { const [startTimestamp, endTimestamp] = elements.dateSlider.noUiSlider.get(true); dateRange.start = new Date(startTimestamp); dateRange.end = new Date(endTimestamp); initialize(); }); }
+    function addNewBar() { if (barsState.length >= MAX_BARS) return; const newBarState = { id: `bar-${barsState.length}`, topic: 'all', customKeyword: '', motions: [], answers: {}, totalMotions: 0 }; barsState.push(newBarState); const barEl = createBarElement(newBarState); elements.barsContainer.appendChild(barEl); elements.addBarBtn.disabled = barsState.length >= MAX_BARS; }
+    function initialize() {
+        elements.infoBtn.innerHTML = ICON_INFO;
+        barsState = [];
+        elements.barsContainer.innerHTML = '';
+        addNewBar();
+        updateTotalScores();
+    }
+    
+    elements.barsContainer.addEventListener('click', handleBarAction);
+    elements.barsContainer.addEventListener('keyup', handleBarAction);
+    elements.resetBtn.addEventListener('click', () => { window.location.reload(); });
+    elements.addBarBtn.addEventListener('click', addNewBar);
+    elements.infoBtn.addEventListener('click', () => { elements.infoModal.style.display = 'block'; });
+    elements.closeModalBtn.addEventListener('click', () => { elements.infoModal.style.display = 'none'; });
+    window.addEventListener('click', (event) => { if (event.target == elements.infoModal) { elements.infoModal.style.display = 'none'; } });
+
+    initializeDateSlider();
+    initialize();
+  </script>
+</body>
+</html>
